@@ -17,6 +17,13 @@ import boto3
 from state_definitions import make_definition
 from stepfunctions_statemachine import StepFunctionsStateMachine
 
+from rich.pretty import pprint
+from rich.logging import RichHandler
+from rich.console import Console
+
+console = Console()
+# print = console.print
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,19 +38,19 @@ def deploy(stack_name, cf_resource):
     """
     with open('setup.yaml') as setup_file:
         setup_template = setup_file.read()
-    print(f"Creating {stack_name}.")
+    console.rule(f"Creating {stack_name}.")
     stack = cf_resource.create_stack(
         StackName=stack_name,
         TemplateBody=setup_template,
         Capabilities=['CAPABILITY_NAMED_IAM'])
-    print("Waiting for stack to deploy. This typically takes a minute or two.")
+    console.rule("Waiting for stack to deploy. This typically takes a minute or two.")
     waiter = cf_resource.meta.client.get_waiter('stack_create_complete')
     waiter.wait(StackName=stack.name)
     stack.load()
-    print(f"Stack status: {stack.stack_status}")
-    print("Created resources:")
+    console.rule(f"Stack status: {stack.stack_status}")
+    console.rule("Created resources:")
     for resource in stack.resource_summaries.all():
-        print(f"\t{resource.resource_type}, {resource.physical_resource_id}")
+        console.rule(f"\t{resource.resource_type}, {resource.physical_resource_id}")
 
 
 def poll_for_messages(queue):
@@ -57,7 +64,7 @@ def poll_for_messages(queue):
         messages = queue.receive_messages(
             MessageAttributeNames=['All'], MaxNumberOfMessages=10, WaitTimeSeconds=5)
         for msg in messages:
-            print(f"Message {msg.message_attributes['message_id']['StringValue']} "
+            console.rule(f"Message {msg.message_attributes['message_id']['StringValue']} "
                   f"received from {msg.message_attributes['user']['StringValue']}: "
                   f"{msg.body}")
             msg.delete()
@@ -76,11 +83,11 @@ def usage_demo(state_machine_name, resources):
 
     state_machine_arn = state_machine.find(state_machine_name)
     if state_machine_arn is None:
-        print("Create a message pump state machine.")
+        console.rule("Create a message pump state machine.")
         definition = make_definition(resources, False)
         state_machine.create(state_machine_name, definition, resources['StepRoleArn'])
-
-    print("Put three messages in the message table.")
+    # :backhand_index_pointing_right: 
+    console.rule("Put three messages in the message table.")
     for user_name, message in [
             ('wills', 'Brevity is the soul of wit.'),
             ('janea', 'Let us never underestimate the power of a well-written letter.'),
@@ -90,50 +97,50 @@ def usage_demo(state_machine_name, resources):
             'user_name': user_name, 'message': message,
             'message_id': str(time.time_ns()), 'sent': False})
 
-    print("Start the state machine.")
+    console.rule("Start the state machine.")
     run_arn = state_machine.start_run(f"run-without-sqs-{time.time_ns()}")
-    print("Wait a few seconds for the state machine to run...")
+    console.rule("Wait a few seconds for the state machine to run...")
     time.sleep(10)
-    print("Verify that the messages in DynamoDB are marked as sent.")
+    console.rule("Verify that the messages in DynamoDB are marked as sent.")
     messages = table.scan()['Items']
-    pprint(messages)
+    console.print_json(data=messages)
 
-    print("Stop the state machine.")
+    console.rule("Stop the state machine.")
     state_machine.stop_run(run_arn, "Stop to update for demo.")
     runs = state_machine.list_runs('RUNNING')
     while runs:
         time.sleep(5)
         runs = state_machine.list_runs('RUNNING')
 
-    print("Update the state machine so it sends messages to Amazon SQS.")
+    console.rule("Update the state machine so it sends messages to Amazon SQS.")
     definition = make_definition(resources, True)
     state_machine.update(definition)
     time.sleep(5)
 
-    print("Reset the messages in the DynamoDB table to not sent.")
+    console.rule("Reset the messages in the DynamoDB table to not sent.")
     for msg in table.scan()['Items']:
         table.update_item(
             Key={'user_name': msg['user_name'], 'message_id': msg['message_id']},
             UpdateExpression='SET sent=:s',
             ExpressionAttributeValues={':s': False})
 
-    print("Restart the state machine.")
+    console.rule("Restart the state machine.")
     run_arn = state_machine.start_run(f"run-with-sqs-{time.time_ns()}")
-    print("Wait for state machine to process messages...")
+    console.rule("Wait for state machine to process messages...")
     time.sleep(15)
-    print("Retrieve messages from Amazon SQS.")
+    console.rule("Retrieve messages from Amazon SQS.")
     poll_for_messages(queue)
 
-    print("Put another message in the table.")
+    console.rule("Put another message in the table.")
     table.put_item(
         Item={'user_name': 'wills', 'message': 'Action is eloquence.',
               'message_id': str(time.time_ns()), 'sent': False})
-    print("Give the state machine time to find and process the message.")
+    console.rule("Give the state machine time to find and process the message.")
     time.sleep(15)
-    print("Get messages from Amazon SQS.")
+    console.rule("Get messages from Amazon SQS.")
     poll_for_messages(queue)
 
-    print("Stop the run.")
+    console.rule("Stop the run.")
     state_machine.stop_run(run_arn, "Done with demo.")
 
 
@@ -146,17 +153,17 @@ def destroy(state_machine_name, stack, cf_resource):
     :param stack: The CloudFormation stack that manages the demo resources.
     :param cf_resource: A Boto3 CloudFormation resource.
     """
-    print("Removing the state machine.")
+    console.rule("Removing the state machine.")
     state_machine = StepFunctionsStateMachine(boto3.client('stepfunctions'))
     state_machine.find(state_machine_name)
     state_machine.delete()
 
-    print(f"Deleting {stack.name}.")
+    console.rule(f"Deleting {stack.name}.")
     stack.delete()
-    print("Waiting for stack removal.")
+    console.rule("Waiting for stack removal.")
     waiter = cf_resource.meta.client.get_waiter('stack_delete_complete')
     waiter.wait(StackName=stack.name)
-    print("Stack delete complete.")
+    console.rule("Stack delete complete.")
 
 
 def main():
@@ -170,32 +177,36 @@ def main():
         help="Indicates the action the script performs.")
     args = parser.parse_args()
 
-    print('-'*88)
-    print("Welcome to the AWS Step Functions demo!")
-    print('-'*88)
+    console.rule('-'*88)
+    console.rule("Welcome to the AWS Step Functions demo!")
+    console.rule('-'*88)
 
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+    # logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+    FORMAT = "%(message)s"
+    logging.basicConfig(
+        level=logging.INFO, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
+    )
 
     cf_resource = boto3.resource('cloudformation')
     stack = cf_resource.Stack('doc-example-stepfunctions-messages-stack')
     state_machine_name = 'doc-example-dynamodb-message-pump'
 
     if args.action == 'deploy':
-        print("Deploying prerequisite resources for the demo.")
+        console.rule("Deploying prerequisite resources for the demo.")
         deploy(stack.name, cf_resource)
-        print("To see example usage, run the script again with the 'demo' flag.")
+        console.rule("To see example usage, run the script again with the 'demo' flag.")
     elif args.action == 'demo':
-        print("Demonstrating how to use AWS Step Functions.")
+        console.rule("Demonstrating how to use AWS Step Functions.")
         usage_demo(
             state_machine_name,
             {o['OutputKey']: o['OutputValue'] for o in stack.outputs})
-        print("To clean up all AWS resources created for the demo, run this script "
+        console.rule("To clean up all AWS resources created for the demo, run this script "
               "again with the 'destroy' flag.")
     elif args.action == 'destroy':
-        print("Destroying AWS resources created for the demo.")
+        console.rule("Destroying AWS resources created for the demo.")
         destroy(state_machine_name, stack, cf_resource)
 
-    print('-'*88)
+    console.rule('-'*88)
 
 
 if __name__ == '__main__':
