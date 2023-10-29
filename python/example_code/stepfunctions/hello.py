@@ -3,6 +3,10 @@
 
 # snippet-start:[python.example_code.sfn.Hello]
 import boto3
+import sys
+sys.path.append('../..')
+from demo_tools.rich import setup 
+nprint, Panel, Text, RichHandler, console, print, header = setup()
 
 def hello_stepfunctions(stepfunctions_client):
     """

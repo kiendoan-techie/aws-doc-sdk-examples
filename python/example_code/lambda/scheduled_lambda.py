@@ -22,7 +22,10 @@ from lambda_basics import LambdaWrapper
 
 # Add relative path to include demo_tools in this code example without need for setup.
 sys.path.append('../..')
+from demo_tools.rich import setup 
+nprint, Panel, Text, RichHandler, console, print, header = setup()
 from demo_tools.retries import wait
+
 
 logger = logging.getLogger(__name__)
 
@@ -153,9 +156,9 @@ def usage_demo():
     completes.
     """
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-    print('-'*88)
-    print("Welcome to the AWS Lambda scheduled rule demo.")
-    print('-'*88)
+    
+    welcome_msg = "Welcome to the AWS Lambda scheduled rule demo."
+    header(welcome_msg)
 
     lambda_function_filename = 'lambda_handler_scheduled.py'
     lambda_handler_name = 'lambda_handler_scheduled.lambda_handler'

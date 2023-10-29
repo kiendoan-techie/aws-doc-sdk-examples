@@ -17,7 +17,9 @@ import boto3
 from state_definitions import make_definition
 from stepfunctions_statemachine import StepFunctionsStateMachine
 
-from rich.pretty import pprint
+from rich import print
+from rich.panel import Panel
+from rich.text import Text
 from rich.logging import RichHandler
 from rich.console import Console
 
@@ -176,10 +178,11 @@ def main():
         'action', choices=['deploy', 'demo', 'destroy'],
         help="Indicates the action the script performs.")
     args = parser.parse_args()
-
-    console.rule('-'*88)
-    console.rule("Welcome to the AWS Step Functions demo!")
-    console.rule('-'*88)
+    welcome_msg = "Welcome to the AWS Step Functions demo!"
+    print(Panel(Text(welcome_msg, style="bold magenta", justify="center")))
+    # console.rule('-'*88)
+    # console.rule("Welcome to the AWS Step Functions demo!")
+    # console.rule('-'*88)
 
     # logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
     FORMAT = "%(message)s"

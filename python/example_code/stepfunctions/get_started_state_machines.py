@@ -19,6 +19,7 @@ import json
 import logging
 import sys
 
+
 import boto3
 from botocore.exceptions import ClientError
 from activities import Activity
@@ -26,6 +27,8 @@ from state_machines import StateMachine
 
 # Add relative path to include demo_tools in this code example without need for setup.
 sys.path.append('../..')
+from demo_tools.rich import setup 
+nprint, Panel, Text, RichHandler, console, print, header = setup()
 import demo_tools.question as q
 from demo_tools.retries import wait
 
@@ -202,10 +205,8 @@ class StateMachineScenario:
             self.iam_client.delete_role(RoleName=state_machine_role_name)
             print(f"Deleted role {state_machine_role_name}.")
 
-    def run_scenario(self, activity_name, state_machine_name):
-        print('-'*88)
-        print("Welcome to the AWS Step Functions state machines demo.")
-        print('-'*88)
+    def run_scenario(self, activity_name, state_machine_name):        
+        header("Welcome to the AWS Step Functions state machines demo.")
 
         activity_arn = self.find_or_create_activity(activity_name)
         state_machine_arn = self.find_or_create_state_machine(state_machine_name, activity_arn)

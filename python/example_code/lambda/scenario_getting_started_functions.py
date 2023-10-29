@@ -31,6 +31,9 @@ from demo_tools.custom_waiter import CustomWaiter, WaitState
 import demo_tools.question as q
 from demo_tools.retries import wait
 
+from demo_tools.rich import setup 
+nprint, Panel, Text, RichHandler, console, print, header = setup()
+
 logger = logging.getLogger(__name__)
 
 
@@ -61,9 +64,9 @@ def run_scenario(lambda_client, iam_resource, basic_file, calculator_file, lambd
     """
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
-    print('-'*88)
-    print("Welcome to the AWS Lambda getting started with functions demo.")
-    print('-'*88)
+    welcome_msg = "Welcome to the AWS Lambda getting started with functions demo."
+    # nprint(Panel(Text(welcome_msg, style="bold magenta", justify="center")))
+    header(welcome_msg)
 
     wrapper = LambdaWrapper(lambda_client, iam_resource)
 
